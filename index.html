@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistem Petty Cash</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: Arial, sans-serif; background:#f5f5f5; color:#333; }
+.hidden { display:none !important; }
+
+/* LOGIN */
+#loginPage { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#fff; }
+.login-box { background:#fff; border:1px solid #ddd; border-radius:8px; padding:40px; width:360px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+.login-box h2 { text-align:center; margin-bottom:8px; font-size:22px; }
+.login-box p  { text-align:center; color:#888; font-size:13px; margin-bottom:24px; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:13px; margin-bottom:6px; color:#555; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:14px; outline:none; }
+.form-group input:focus, .form-group select:focus { border-color:#888; }
+.btn { padding:10px 20px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
+.btn-primary { background:#333; color:#fff; }
+.btn-primary:hover { background:#111; }
+.btn-danger  { background:#e74c3c; color:#fff; }
+.btn-success { background:#27ae60; color:#fff; }
+.btn-warning { background:#f39c12; color:#fff; }
+.btn-sm  { padding:5px 12px; font-size:12px; }
+.btn-full { width:100%; }
+
+/* NAVBAR */
+#app { display:none; }
+.navbar { background:#fff; border-bottom:1px solid #ddd; padding:12px 24px; display:flex; justify-content:space-between; align-items:center; }
+.navbar h1 { font-size:18px; }
+.navbar .nav-right { display:flex; align-items:center; gap:12px; }
+.navbar .user-info { font-size:13px; color:#666; }
+
+/* SIDEBAR */
+.layout { display:flex; min-height:calc(100vh - 55px); }
+.sidebar { width:200px; background:#fff; border-right:1px solid #ddd; padding:16px 0; flex-shrink:0; }
+.sidebar a { display:block; padding:10px 20px; font-size:14px; color:#444; text-decoration:none; cursor:pointer; }
+.sidebar a:hover, .sidebar a.active { background:#f0f0f0; color:#111; font-weight:bold; }
+.content { flex:1; padding:24px; overflow-y:auto; }
+
+/* CARD */
+.card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:20px; margin-bottom:20px; }
+.card h3 { margin-bottom:16px; font-size:16px; border-bottom:1px solid #eee; padding-bottom:10px; }
+
+/* TABLE */
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { padding:10px 12px; border-bottom:1px solid #eee; text-align:left; }
+th { background:#f8f8f8; font-weight:600; }
+tr:hover { background:#fafafa; }
+
+/* BADGE */
+.badge { padding:3px 10px; border-radius:12px; font-size:11px; font-weight:bold; }
+.badge-pending  { background:#fff3cd; color:#856404; }
+.badge-approved { background:#d4edda; color:#155724; }
+.badge-rejected { background:#f8d7da; color:#721c24; }
+
+/* FORM ROW */
+.form-row   { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+
+/* MODAL */
+.modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:999; display:flex; justify-content:center; align-items:center; }
+.modal { background:#fff; border-radius:8px; padding:28px; width:700px; max-width:97vw; max-height:92vh; overflow-y:auto; }
+.modal h3 { margin-bottom:20px; font-size:16px; }
+.modal-footer { margin-top:20px; display:flex; gap:10px; justify-content:flex-end; }
+
+/* SUMMARY */
+.summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+.summary-card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:16px; text-align:center; }
+.summary-card .num   { font-size:24px; font-weight:bold; }
+.summary-card .label { font-size:12px; color:#888; margin-top:4px; }
+
+.filter-row { display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+.filter-row input, .filter-row select { padding:8px 12px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+
+img.bon-thumb { width:60px; height:45px; object-fit:cover; border-radius:4px; cursor:pointer; border:1px solid #ddd; }
+
+/* ITEM TABLE in form */
+.item-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:10px; }
+.item-table th { background:#f8f8f8; padding:8px 10px; border-bottom:2px solid #ddd; font-weight:600; }
+.item-table td { padding:6px 6px; border-bottom:1px solid #eee; vertical-align:middle; }
+.item-table input, .item-table select { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
+.total-bar { background:#f8f8f8; border:1px solid #ddd; border-radius:6px; padding:10px 16px;
+             display:flex; justify-content:flex-end; align-items:center; gap:12px; font-size:14px; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="login-box">
+    <h2>💰 Petty Cash</h2>
+    <p>Sistem Manajemen Kas Kecil</p>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Password">
+    </div>
+    <div id="loginErr" style="color:#e74c3c;font-size:12px;margin-bottom:10px;"></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Masuk</button>
+    <p style="margin-top:12px;font-size:11px;text-align:center;color:#aaa;">Demo: admin/admin123 | staf1/staf123</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="navbar">
+    <h1>💰 Petty Cash</h1>
+    <div class="nav-right">
+      <span class="user-info" id="navUserInfo"></span>
+      <button class="btn btn-sm" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content" id="mainContent"></div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modalOverlay" class="modal-overlay hidden">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbycECTomHR271PLlLDf9tpHfWQk0Hf-He6qIJjh2Qp7wwADf0d9ySPyXTWlvJMc50G8Xg/exec";
+
+// ============================================================
+// DEFAULT STATE
+// ============================================================
+const DEFAULT_STATE = {
+  users: [
+    { id:1, username:"admin",  password:"admin123", role:"admin", nama:"Admin Pusat",  toko:"Semua" },
+    { id:2, username:"staf1",  password:"staf123",  role:"staf",  nama:"Budi Santoso", toko:"Toko A" },
+    { id:3, username:"staf2",  password:"staf456",  role:"staf",  nama:"Sari Dewi",    toko:"Toko B" }
+  ],
+  categories: ["Operasional","ATK","Kebersihan","Listrik","Transport","Lain-lain"],
+  toko: ["Toko A","Toko B","Toko C"],
+  modal: 5000000,
+  pengajuan: [
+    {
+      id:1, tanggal:"2026-06-10", pengaju:"Budi Santoso", toko:"Toko A",
+      items:[
+        { namaBarang:"Kertas A4",  kategori:"ATK",         keterangan:"Beli kertas",  jumlah:50000, foto:"" },
+        { namaBarang:"Pulpen Box", kategori:"ATK",         keterangan:"Isi pulpen",   jumlah:35000, foto:"" }
+      ],
+      totalJumlah: 85000, status:"approved", catatan:"", approvedBy:"Admin Pusat", approvedAt:"2026-06-10"
+    },
+    {
+      id:2, tanggal:"2026-06-12", pengaju:"Sari Dewi", toko:"Toko B",
+      items:[
+        { namaBarang:"Sabun Cuci", kategori:"Kebersihan",  keterangan:"Sabun cuci",   jumlah:30000, foto:"" }
+      ],
+      totalJumlah: 30000, status:"pending", catatan:"", approvedBy:"", approvedAt:""
+    }
+  ],
+  nextId: 3
+};
+
+// ============================================================
+// LOCALSTORAGE PERSISTENCE
+// ============================================================
+function saveState() {
+  // simpan tanpa foto (base64 terlalu besar) — foto tetap ada di memori sesi
+  const toSave = JSON.parse(JSON.stringify(state));
+  try { localStorage.setItem("pettyCashState", JSON.stringify(toSave)); } catch(e){}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem("pettyCashState");
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+let state = loadState();
+let currentUser = null;
+
+// simpan otomatis tiap perubahan state
+function saveAndRefresh() { saveState(); }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function fmtRp(n)  { return "Rp " + Number(n||0).toLocaleString("id-ID"); }
+function fmtDate(d){ if (!d) return "-"; return new Date(d+"T00:00:00").toLocaleDateString("id-ID"); }
+function today()   { return new Date().toISOString().split("T")[0]; }
+function calcTotal(items){ return items.reduce((s,i)=>s+(parseInt(i.jumlah)||0),0); }
+
+// ============================================================
+// LOGIN / LOGOUT
+// ============================================================
+function doLogin() {
+  const u = document.getElementById("loginUser").value.trim();
+  const p = document.getElementById("loginPass").value.trim();
+  const found = state.users.find(x => x.username===u && x.password===p);
+  if (!found) { document.getElementById("loginErr").textContent = "Username atau password salah."; return; }
+  currentUser = found;
+  localStorage.setItem("pettyCashSession", JSON.stringify({ id: found.id }));
+  startApp();
+}
+
+function startApp() {
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("navUserInfo").textContent = currentUser.nama + " (" + currentUser.role + ")";
+  buildSidebar();
+  if (currentUser.role === "staf") renderPengajuan();
+  else renderDashboardAdmin();
+}
+
+function doLogout() {
+  currentUser = null;
+  localStorage.removeItem("pettyCashSession");
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("loginUser").value = "";
+  document.getElementById("loginPass").value = "";
+  document.getElementById("loginErr").textContent = "";
+}
+
+// Restore session saat halaman dibuka / refresh
+(function restoreSession() {
+  try {
+    const raw = localStorage.getItem("pettyCashSession");
+    if (!raw) return;
+    const sess = JSON.parse(raw);
+    const found = state.users.find(u => u.id === sess.id);
+    if (found) { currentUser = found; startApp(); }
+  } catch(e) {}
+})();
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function buildSidebar() {
+  const sb = document.getElementById("sidebar");
+  if (currentUser.role === "staf") {
+    sb.innerHTML = `
+      <a onclick="renderPengajuan()" id="mn-pengajuan">📋 Pengajuan</a>
+      <a onclick="renderRiwayat()"   id="mn-riwayat">📜 Riwayat</a>`;
+  } else {
+    sb.innerHTML = `
+      <a onclick="renderDashboardAdmin()" id="mn-dashboard">🏠 Dashboard</a>
+      <a onclick="renderApprovePage()"    id="mn-approve">✅ Pengajuan</a>
+      <a onclick="renderKategori()"       id="mn-kat">🏷️ Kategori</a>
+      <a onclick="renderToko()"           id="mn-toko">🏪 Toko</a>
+      <a onclick="renderModal()"          id="mn-modal">💵 Modal</a>
+      <a onclick="renderKaryawan()"       id="mn-kar">👥 Karyawan</a>`;
+  }
+}
+
+function setActive(id) {
+  document.querySelectorAll(".sidebar a").forEach(a=>a.classList.remove("active"));
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
+}
+
+// ============================================================
+// MODAL HELPER
+// ============================================================
+function openModal(html) {
+  document.getElementById("modalBox").innerHTML = html;
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+function closeModal() { document.getElementById("modalOverlay").classList.add("hidden"); }
+document.addEventListener("click", e => { if (e.target.id==="modalOverlay") closeModal(); });
+
+// ============================================================
+// STAF - FORM PENGAJUAN (multi-item)
+// ============================================================
+let draftItems = []; // item sementara di form
+
+function renderPengajuan() {
+  setActive("mn-pengajuan");
+  draftItems = [{ namaBarang:"", kategori: state.categories[0]||"", keterangan:"", jumlah:"", foto:"" }];
+  buildPengajuanPage();
+}
+
+function buildPengajuanPage() {
+  const tokoOpts = state.toko.map(t=>`<option ${t===currentUser.toko?'selected':''}>${t}</option>`).join("");
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card">
+    <h3>📋 Form Pengajuan Bon</h3>
+    <div class="form-row" style="margin-bottom:16px;">
+      <div class="form-group"><label>Tanggal</label><input type="date" id="fTgl" value="${today()}"></div>
+      <div class="form-group"><label>Nama Pengaju</label><input type="text" id="fNama" value="${currentUser.nama}" readonly></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Asal Toko</label>
+      <select id="fToko" style="max-width:300px;">${tokoOpts}</select>
+    </div>
+
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Daftar Item Barang</label>
+    <div style="overflow-x:auto;">
+      <table class="item-table" id="itemTable">
+        <thead>
+          <tr>
+            <th style="width:25%">Nama Barang</th>
+            <th style="width:18%">Kategori</th>
+            <th style="width:25%">Keterangan</th>
+            <th style="width:15%">Jumlah (Rp)</th>
+            <th style="width:12%">Foto Bon</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody id="itemBody"></tbody>
+      </table>
+    </div>
+    <div class="total-bar" id="totalBar">Total: <span id="grandTotal">Rp 0</span></div>
+    <div style="margin-top:12px;display:flex;gap:10px;">
+      <button class="btn btn-sm" style="background:#eee;" onclick="addItemRow()">+ Tambah Item</button>
+    </div>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button class="btn btn-primary" onclick="submitPengajuan()">Kirim Pengajuan</button>
+      <button class="btn" onclick="renderPengajuan()">Reset</button>
+    </div>
+  </div>`;
+  renderItemRows();
+}
+
+function catOptions(selected) {
+  return state.categories.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join("");
+}
+
+function renderItemRows() {
+  const tbody = document.getElementById("itemBody");
+  if (!tbody) return;
+  tbody.innerHTML = draftItems.map((item, i) => `
+    <tr>
+      <td><input type="text" value="${item.namaBarang}" oninput="draftItems[${i}].namaBarang=this.value" placeholder="Nama barang"></td>
+      <td><select onchange="draftItems[${i}].kategori=this.value">${catOptions(item.kategori)}</select></td>
+      <td><input type="text" value="${item.keterangan}" oninput="draftItems[${i}].keterangan=this.value" placeholder="Keterangan"></td>
+      <td><input type="number" value="${item.jumlah}" oninput="draftItems[${i}].jumlah=this.value;updateGrandTotal()" placeholder="0" min="0"></td>
+      <td>
+        ${item.foto
+          ? `<img class="bon-thumb" src="${item.foto}" onclick="viewImg('${item.foto}')" title="Lihat foto"><br>
+             <small style="cursor:pointer;color:#e74c3c;" onclick="draftItems[${i}].foto='';renderItemRows()">Hapus</small>`
+          : `<input type="file" accept="image/*" style="font-size:11px;padding:2px;" onchange="readFoto(${i},this)">`
+        }
+      </td>
+      <td>${draftItems.length>1 ? `<button class="btn btn-danger btn-sm" onclick="removeItemRow(${i})">✕</button>` : ""}</td>
+    </tr>`).join("");
+  updateGrandTotal();
+}
+
+function addItemRow() {
+  draftItems.push({ namaBarang:"", kategori: state.categories[0]||"", keterangan:"", jumlah:"", foto:"" });
+  renderItemRows();
+}
+
+function removeItemRow(i) {
+  draftItems.splice(i,1);
+  renderItemRows();
+}
+
+function readFoto(i, input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { draftItems[i].foto = e.target.result; renderItemRows(); };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function updateGrandTotal() {
+  const total = draftItems.reduce((s,item)=>s+(parseInt(item.jumlah)||0),0);
+  const el = document.getElementById("grandTotal");
+  if (el) el.textContent = fmtRp(total);
+}
+
+function submitPengajuan() {
+  const tgl  = document.getElementById("fTgl").value;
+  const toko = document.getElementById("fToko").value;
+  if (!tgl) { alert("Isi tanggal."); return; }
+
+  const validItems = draftItems.filter(i=>i.namaBarang.trim() && (parseInt(i.jumlah)||0)>0);
+  if (validItems.length===0) { alert("Minimal satu item dengan nama barang dan jumlah."); return; }
+
+  const totalJumlah = calcTotal(validItems);
+  const newRow = {
+    id: state.nextId++,
+    tanggal: tgl,
+    pengaju: currentUser.nama,
+    toko,
+    items: validItems.map(i=>({...i, jumlah: parseInt(i.jumlah)||0})),
+    totalJumlah,
+    status: "pending",
+    catatan: ""
+  };
+  state.pengajuan.push(newRow);
+  saveState();
+  sendToSheets(newRow);
+  alert("Pengajuan berhasil dikirim! Total: " + fmtRp(totalJumlah));
+  renderPengajuan();
+}
+
+// ============================================================
+// STAF - RIWAYAT
+// ============================================================
+function renderRiwayat() {
+  setActive("mn-riwayat");
+  buildRiwayatPage(state.pengajuan.filter(p=>p.pengaju===currentUser.nama));
+}
+
+function buildRiwayatPage(data) {
+  const tableRows = data.length===0
+    ? `<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">Belum ada data</td></tr>`
+    : data.map(r => {
+        const itemList = r.items.map(it=>`<div>• ${it.namaBarang} — ${fmtRp(it.jumlah)} <small style="color:#888;">(${it.kategori})</small></div>`).join("");
+        const canEdit  = r.status === "pending";
+        return `<tr>
+          <td>${fmtDate(r.tanggal)}</td>
+          <td>${r.toko}</td>
+          <td>${itemList}</td>
+          <td style="font-weight:bold;">${fmtRp(r.totalJumlah)}</td>
+          <td>${r.items.map(it=>it.foto?`<img class="bon-thumb" src="${it.foto}" onclick="viewImg('${it.foto}')">`:"-").join(" ")}</td>
+          <td>
+            <span class="badge badge-${r.status}">${r.status}</span>
+            ${r.approvedBy ? `<br><small style="color:#555;">oleh: <b>${r.approvedBy}</b></small>` : ""}
+          </td>
+          <td>${r.catatan||"-"}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm" style="background:#eee;" onclick="cetakSatuPengajuan(${r.id})">🖨️</button>
+            ${canEdit
+              ? `<button class="btn btn-warning btn-sm" onclick="editPengajuanStaf(${r.id})">✏️</button>`
+              : `<span style="font-size:11px;color:#aaa;">terkunci</span>`}
+          </td>
+        </tr>`;
+      }).join("");
+
+  const grandTotal = data.reduce((s,r)=>s+r.totalJumlah,0);
+
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card">
+    <h3>📜 Riwayat Pengajuan</h3>
+    <div class="filter-row">
+      <input type="date" id="rFrom">
+      <input type="date" id="rTo">
+      <select id="rStat">
+        <option value="">Semua Status</option>
+        <option>pending</option><option>approved</option><option>rejected</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="applyFilterRiwayat()">Filter</button>
+      <button class="btn btn-success btn-sm" onclick="cetakPDFStaf()">🖨️ Cetak Semua</button>
+    </div>
+    <table id="tblRiwayat">
+      <thead>
+        <tr>
+          <th>Tanggal</th><th>Toko</th><th>Item Barang</th>
+          <th>Total</th><th>Bon</th><th>Status / Diproses</th><th>Catatan</th><th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="font-weight:bold;text-align:right;">Grand Total</td>
+          <td style="font-weight:bold;" id="rGrandTotal">${fmtRp(grandTotal)}</td>
+          <td colspan="4"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+}
+
+function applyFilterRiwayat() {
+  const from = document.getElementById("rFrom").value;
+  const to   = document.getElementById("rTo").value;
+  const stat = document.getElementById("rStat").value;
+  let rows = state.pengajuan.filter(p=>p.pengaju===currentUser.nama);
+  if (from && to) rows = rows.filter(r=>r.tanggal>=from && r.tanggal<=to);
+  if (stat) rows = rows.filter(r=>r.status===stat);
+  buildRiwayatPage(rows);
+}
+
+function viewImg(src) {
+  openModal(`<div style="text-align:center;">
+    <h3 style="margin-bottom:12px;">Foto Bon</h3>
+    <img src="${src}" style="max-width:100%;border-radius:6px;">
+    <div style="margin-top:16px;"><button class="btn btn-sm" onclick="closeModal()">Tutup</button></div>
+  </div>`);
+}
+
+// ============================================================
+// CETAK PDF - PER PENGAJUAN (dipakai staf & admin)
+// ============================================================
+function cetakSatuPengajuan(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFontSize(16); doc.setFont(undefined,"bold");
+  doc.text("BUKTI PENGAJUAN PETTY CASH", 105, 18, { align:"center" });
+  doc.setFontSize(10); doc.setFont(undefined,"normal");
+  doc.text("Dicetak: " + new Date().toLocaleString("id-ID"), 105, 25, { align:"center" });
+
+  // Info pengajuan
+  let y = 34;
+  const addInfo = (label, val) => {
+    doc.setFont(undefined,"bold");   doc.text(label, 14, y);
+    doc.setFont(undefined,"normal"); doc.text(": " + val, 55, y);
+    y += 7;
+  };
+  addInfo("No. Pengajuan", "#" + r.id);
+  addInfo("Tanggal",       fmtDate(r.tanggal));
+  addInfo("Pengaju",       r.pengaju);
+  addInfo("Asal Toko",     r.toko);
+  addInfo("Status",        r.status.toUpperCase());
+  if (r.approvedBy) addInfo("Diproses oleh", r.approvedBy + (r.approvedAt ? " (" + fmtDate(r.approvedAt) + ")" : ""));
+  if (r.catatan)    addInfo("Catatan",        r.catatan);
+
+  y += 3;
+
+  // Tabel item
+  doc.autoTable({
+    startY: y,
+    head: [["No","Nama Barang","Kategori","Keterangan","Jumlah (Rp)"]],
+    body: r.items.map((it,i) => [
+      i+1, it.namaBarang, it.kategori, it.keterangan||"-",
+      Number(it.jumlah).toLocaleString("id-ID")
+    ]),
+    foot: [["","","","Total", Number(r.totalJumlah).toLocaleString("id-ID")]],
+    styles: { fontSize:10 },
+    headStyles: { fillColor:[50,50,50] },
+    footStyles: { fillColor:[240,240,240], fontStyle:"bold" },
+    columnStyles: { 4: { halign:"right" } }
+  });
+
+  // Tanda tangan
+  const finalY = doc.lastAutoTable.finalY + 16;
+  doc.setFontSize(10);
+  doc.text("Pengaju,", 30, finalY, { align:"center" });
+  doc.text("Mengetahui,", 105, finalY, { align:"center" });
+  doc.text("Admin,", 175, finalY, { align:"center" });
+  doc.text("( " + r.pengaju + " )", 30, finalY + 20, { align:"center" });
+  doc.text("( " + (r.approvedBy || "..................") + " )", 105, finalY + 20, { align:"center" });
+
+  doc.save("pengajuan-" + r.id + "-" + r.toko.replace(/\s/g,"_") + ".pdf");
+}
+
+// ============================================================
+// CETAK PDF STAF - SEMUA (dari tabel riwayat)
+// ============================================================
+function cetakPDFStaf() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(16); doc.text("Laporan Petty Cash - " + currentUser.nama, 14, 18);
+  doc.setFontSize(10); doc.text("Dicetak: " + new Date().toLocaleString("id-ID"), 14, 26);
+
+  const rows = [];
+  document.querySelectorAll("#tblRiwayat tbody tr").forEach(tr => {
+    const cells = tr.querySelectorAll("td");
+    if (cells.length > 2) {
+      rows.push([
+        cells[0].textContent.trim(),
+        cells[1].textContent.trim(),
+        cells[2].textContent.replace(/•/g,"-").trim(),
+        cells[3].textContent.trim(),
+        cells[5].textContent.trim()
+      ]);
+    }
+  });
+
+  doc.autoTable({
+    startY: 32,
+    head: [["Tanggal","Toko","Item Barang","Total","Status"]],
+    body: rows, styles:{ fontSize:9 }, headStyles:{ fillColor:[50,50,50] }
+  });
+  doc.save("laporan-petty-cash-" + currentUser.nama.replace(/\s/g,"_") + ".pdf");
+}
+
+// ============================================================
+// STAF - EDIT PENGAJUAN (hanya pending)
+// ============================================================
+let editStafDraftItems = [];
+
+function editPengajuanStaf(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  if (r.status !== "pending") { alert("Pengajuan sudah diproses, tidak bisa diedit."); return; }
+  editStafDraftItems = r.items.map(i=>({...i}));
+  const tokoOpts = state.toko.map(t=>`<option ${t===r.toko?'selected':''}>${t}</option>`).join("");
+
+  openModal(`
+  <h3>✏️ Edit Pengajuan #${r.id}</h3>
+  <div class="form-row" style="margin-bottom:12px;">
+    <div class="form-group"><label>Tanggal</label><input type="date" id="esTgl" value="${r.tanggal}"></div>
+    <div class="form-group"><label>Asal Toko</label><select id="esToko">${tokoOpts}</select></div>
+  </div>
+  <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Item Barang</label>
+  <div style="overflow-x:auto;">
+    <table class="item-table">
+      <thead><tr><th>Nama Barang</th><th>Kategori</th><th>Keterangan</th><th>Jumlah</th><th>Foto</th><th></th></tr></thead>
+      <tbody id="esItemBody"></tbody>
+    </table>
+  </div>
+  <div class="total-bar" style="margin-top:8px;">Total: <span id="esGrandTotal">Rp 0</span></div>
+  <div style="margin-top:8px;"><button class="btn btn-sm" style="background:#eee;" onclick="addEsItemRow()">+ Tambah Item</button></div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="saveEditPengajuanStaf(${id})">Simpan</button>
+    <button class="btn" onclick="closeModal()">Batal</button>
+  </div>`);
+  renderEsItemRows();
+}
+
+function renderEsItemRows() {
+  const tbody = document.getElementById("esItemBody");
+  if (!tbody) return;
+  tbody.innerHTML = editStafDraftItems.map((item,i)=>`
+    <tr>
+      <td><input type="text" value="${item.namaBarang}" oninput="editStafDraftItems[${i}].namaBarang=this.value" placeholder="Nama barang"></td>
+      <td><select onchange="editStafDraftItems[${i}].kategori=this.value">${catOptions(item.kategori)}</select></td>
+      <td><input type="text" value="${item.keterangan||''}" oninput="editStafDraftItems[${i}].keterangan=this.value" placeholder="Keterangan"></td>
+      <td><input type="number" value="${item.jumlah}" oninput="editStafDraftItems[${i}].jumlah=this.value;updateEsTotal()" min="0" placeholder="0"></td>
+      <td>
+        ${item.foto
+          ? `<img class="bon-thumb" src="${item.foto}" onclick="viewImg('${item.foto}')"><br>
+             <small style="cursor:pointer;color:#e74c3c;" onclick="editStafDraftItems[${i}].foto='';renderEsItemRows()">Hapus</small>`
+          : `<input type="file" accept="image/*" style="font-size:11px;" onchange="readEsFoto(${i},this)">`}
+      </td>
+      <td>${editStafDraftItems.length>1?`<button class="btn btn-danger btn-sm" onclick="removeEsItemRow(${i})">✕</button>`:""}</td>
+    </tr>`).join("");
+  updateEsTotal();
+}
+
+function addEsItemRow() {
+  editStafDraftItems.push({ namaBarang:"", kategori:state.categories[0]||"", keterangan:"", jumlah:0, foto:"" });
+  renderEsItemRows();
+}
+function removeEsItemRow(i) { editStafDraftItems.splice(i,1); renderEsItemRows(); }
+function updateEsTotal() {
+  const total = editStafDraftItems.reduce((s,i)=>s+(parseInt(i.jumlah)||0),0);
+  const el = document.getElementById("esGrandTotal");
+  if (el) el.textContent = fmtRp(total);
+}
+function readEsFoto(i, input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { editStafDraftItems[i].foto = e.target.result; renderEsItemRows(); };
+  reader.readAsDataURL(input.files[0]);
+}
+function saveEditPengajuanStaf(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r || r.status !== "pending") { alert("Tidak bisa disimpan."); closeModal(); return; }
+  r.tanggal     = document.getElementById("esTgl").value;
+  r.toko        = document.getElementById("esToko").value;
+  r.items       = editStafDraftItems.map(i=>({...i, jumlah:parseInt(i.jumlah)||0}));
+  r.totalJumlah = calcTotal(r.items);
+  saveState(); updateSheets(r); closeModal();
+  renderRiwayat();
+}
+
+// ============================================================
+// ADMIN - DASHBOARD
+// ============================================================
+function renderDashboardAdmin() {
+  setActive("mn-dashboard");
+  const totalSemua  = state.pengajuan.reduce((s,r)=>s+r.totalJumlah,0);
+  const approved    = state.pengajuan.filter(r=>r.status==="approved").reduce((s,r)=>s+r.totalJumlah,0);
+  const pending     = state.pengajuan.filter(r=>r.status==="pending").length;
+  const sisa        = state.modal - approved;
+
+  document.getElementById("mainContent").innerHTML = `
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num">${fmtRp(state.modal)}</div><div class="label">Total Modal</div></div>
+    <div class="summary-card"><div class="num">${fmtRp(approved)}</div><div class="label">Total Disetujui</div></div>
+    <div class="summary-card"><div class="num">${fmtRp(sisa)}</div><div class="label">Sisa Kas</div></div>
+  </div>
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num">${state.pengajuan.length}</div><div class="label">Total Pengajuan</div></div>
+    <div class="summary-card"><div class="num" style="color:#856404;">${pending}</div><div class="label">Menunggu Approve</div></div>
+    <div class="summary-card"><div class="num">${fmtRp(totalSemua)}</div><div class="label">Total Semua Bon</div></div>
+  </div>
+  <div class="card">
+    <h3>Pengajuan Terbaru</h3>
+    <table>
+      <thead><tr><th>Tanggal</th><th>Pengaju</th><th>Toko</th><th>Jml Item</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>${[...state.pengajuan].reverse().slice(0,5).map(r=>`
+        <tr>
+          <td>${fmtDate(r.tanggal)}</td><td>${r.pengaju}</td><td>${r.toko}</td>
+          <td>${r.items.length} item</td><td>${fmtRp(r.totalJumlah)}</td>
+          <td><span class="badge badge-${r.status}">${r.status}</span></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ============================================================
+// ADMIN - APPROVE PAGE
+// ============================================================
+function renderApprovePage() {
+  setActive("mn-approve");
+  buildApprovePage(state.pengajuan);
+}
+
+function buildApprovePage(data) {
+  const grandTotal = data.reduce((s,r)=>s+r.totalJumlah,0);
+  const tableRows = data.length===0
+    ? `<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">Belum ada data</td></tr>`
+    : data.map(r => {
+        const itemList = r.items.map(it=>`<div style="margin-bottom:2px;">• ${it.namaBarang} <span style="color:#888;">(${it.kategori})</span> — ${fmtRp(it.jumlah)}</div>`).join("");
+        const bonList  = r.items.map(it=>it.foto?`<img class="bon-thumb" src="${it.foto}" onclick="viewImg('${it.foto}')">`:"-").join(" ");
+        return `<tr>
+          <td>${fmtDate(r.tanggal)}</td>
+          <td>${r.pengaju}<br><small style="color:#888;">${r.toko}</small></td>
+          <td>${itemList}</td>
+          <td style="font-weight:bold;white-space:nowrap;">${fmtRp(r.totalJumlah)}</td>
+          <td>${bonList}</td>
+          <td>
+            <span class="badge badge-${r.status}">${r.status}</span>
+            ${r.approvedBy ? `<br><small style="color:#555;">oleh: <b>${r.approvedBy}</b></small><br><small style="color:#aaa;">${fmtDate(r.approvedAt)}</small>` : ""}
+            ${r.catatan ? `<br><small style="color:#888;">${r.catatan}</small>` : ""}
+          </td>
+          <td style="white-space:nowrap;">
+            ${r.status==="pending"
+              ? `<button class="btn btn-success btn-sm" onclick="approveRow(${r.id})">✔ Setuju</button>
+                 <button class="btn btn-danger btn-sm" onclick="rejectRow(${r.id})">✘ Tolak</button>`
+              : ""}
+            <button class="btn btn-warning btn-sm" style="margin-top:4px;" onclick="editPengajuan(${r.id})">✏️ Edit</button>
+            <button class="btn btn-sm" style="background:#eee;margin-top:4px;" onclick="cetakSatuPengajuan(${r.id})">🖨️</button>
+          </td>
+        </tr>`;
+      }).join("");
+
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card">
+    <h3>✅ Manajemen Pengajuan</h3>
+    <div class="filter-row">
+      <input type="date" id="aFrom"><input type="date" id="aTo">
+      <select id="aStat">
+        <option value="">Semua Status</option>
+        <option>pending</option><option>approved</option><option>rejected</option>
+      </select>
+      <select id="aToko">
+        <option value="">Semua Toko</option>
+        ${state.toko.map(t=>`<option>${t}</option>`).join("")}
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="filterApprove()">Filter</button>
+      <button class="btn btn-success btn-sm" onclick="cetakPDFAdmin()">🖨️ PDF</button>
+    </div>
+    <table id="tblApprove">
+      <thead>
+        <tr><th>Tgl</th><th>Pengaju/Toko</th><th>Item Barang</th><th>Total</th><th>Bon</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="font-weight:bold;text-align:right;">Grand Total</td>
+          <td style="font-weight:bold;" id="aGrandTotal">${fmtRp(grandTotal)}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+}
+
+function filterApprove() {
+  const from = document.getElementById("aFrom").value;
+  const to   = document.getElementById("aTo").value;
+  const stat = document.getElementById("aStat").value;
+  const toko = document.getElementById("aToko").value;
+  let rows = [...state.pengajuan];
+  if (from && to) rows = rows.filter(r=>r.tanggal>=from && r.tanggal<=to);
+  if (stat) rows = rows.filter(r=>r.status===stat);
+  if (toko) rows = rows.filter(r=>r.toko===toko);
+  buildApprovePage(rows);
+}
+
+function approveRow(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  r.status     = "approved";
+  r.approvedBy = currentUser.nama;
+  r.approvedAt = today();
+  saveState(); updateSheets(r); renderApprovePage();
+}
+
+function rejectRow(id) {
+  const cat = prompt("Alasan penolakan:");
+  if (cat===null) return;
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  r.status     = "rejected";
+  r.catatan    = cat||"";
+  r.approvedBy = currentUser.nama;
+  r.approvedAt = today();
+  saveState(); updateSheets(r); renderApprovePage();
+}
+
+// ============================================================
+// ADMIN - EDIT PENGAJUAN (multi-item)
+// ============================================================
+let editDraftItems = [];
+
+function editPengajuan(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  editDraftItems = r.items.map(i=>({...i}));
+  const tokoOpts = state.toko.map(t=>`<option ${t===r.toko?'selected':''}>${t}</option>`).join("");
+
+  openModal(`
+  <h3>✏️ Edit Pengajuan</h3>
+  <div class="form-row" style="margin-bottom:12px;">
+    <div class="form-group"><label>Tanggal</label><input type="date" id="eTgl" value="${r.tanggal}"></div>
+    <div class="form-group"><label>Toko</label><select id="eToko">${tokoOpts}</select></div>
+  </div>
+  <div class="form-row" style="margin-bottom:12px;">
+    <div class="form-group"><label>Status</label>
+      <select id="eStat">
+        <option ${r.status==='pending'?'selected':''} value="pending">pending</option>
+        <option ${r.status==='approved'?'selected':''} value="approved">approved</option>
+        <option ${r.status==='rejected'?'selected':''} value="rejected">rejected</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Catatan Admin</label><input type="text" id="eCat" value="${r.catatan||""}"></div>
+  </div>
+  <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Item Barang</label>
+  <div style="overflow-x:auto;">
+    <table class="item-table">
+      <thead><tr><th>Nama Barang</th><th>Kategori</th><th>Keterangan</th><th>Jumlah</th><th></th></tr></thead>
+      <tbody id="editItemBody"></tbody>
+    </table>
+  </div>
+  <div class="total-bar" style="margin-top:8px;">Total: <span id="editGrandTotal">Rp 0</span></div>
+  <div style="margin-top:8px;"><button class="btn btn-sm" style="background:#eee;" onclick="addEditItemRow()">+ Tambah Item</button></div>
+  <div class="modal-footer">
+    <button class="btn btn-danger" onclick="hapusPengajuan(${id})">🗑️ Hapus</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-primary" onclick="saveEditPengajuan(${id})">Simpan</button>
+    <button class="btn" onclick="closeModal()">Batal</button>
+  </div>`);
+  renderEditItemRows();
+}
+
+function renderEditItemRows() {
+  const tbody = document.getElementById("editItemBody");
+  if (!tbody) return;
+  tbody.innerHTML = editDraftItems.map((item,i)=>`
+    <tr>
+      <td><input type="text" value="${item.namaBarang}" oninput="editDraftItems[${i}].namaBarang=this.value" placeholder="Nama barang"></td>
+      <td><select onchange="editDraftItems[${i}].kategori=this.value">${catOptions(item.kategori)}</select></td>
+      <td><input type="text" value="${item.keterangan||''}" oninput="editDraftItems[${i}].keterangan=this.value" placeholder="Keterangan"></td>
+      <td><input type="number" value="${item.jumlah}" oninput="editDraftItems[${i}].jumlah=this.value;updateEditTotal()" min="0" placeholder="0"></td>
+      <td>${editDraftItems.length>1?`<button class="btn btn-danger btn-sm" onclick="removeEditItemRow(${i})">✕</button>`:""}</td>
+    </tr>`).join("");
+  updateEditTotal();
+}
+
+function addEditItemRow() {
+  editDraftItems.push({ namaBarang:"", kategori:state.categories[0]||"", keterangan:"", jumlah:0, foto:"" });
+  renderEditItemRows();
+}
+
+function removeEditItemRow(i) { editDraftItems.splice(i,1); renderEditItemRows(); }
+
+function updateEditTotal() {
+  const total = editDraftItems.reduce((s,i)=>s+(parseInt(i.jumlah)||0),0);
+  const el = document.getElementById("editGrandTotal");
+  if (el) el.textContent = fmtRp(total);
+}
+
+function saveEditPengajuan(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  r.tanggal     = document.getElementById("eTgl").value;
+  r.toko        = document.getElementById("eToko").value;
+  r.status      = document.getElementById("eStat").value;
+  r.catatan     = document.getElementById("eCat").value;
+  r.items       = editDraftItems.map(i=>({...i, jumlah:parseInt(i.jumlah)||0}));
+  r.totalJumlah = calcTotal(r.items);
+  saveState(); updateSheets(r); closeModal(); renderApprovePage();
+}
+
+function hapusPengajuan(id) {
+  const r = state.pengajuan.find(x=>x.id===id);
+  if (!r) return;
+  if (!confirm(`Hapus pengajuan #${r.id} dari ${r.pengaju} (${fmtRp(r.totalJumlah)})?\n\nTindakan ini tidak bisa dibatalkan.`)) return;
+  state.pengajuan = state.pengajuan.filter(x=>x.id!==id);
+  saveState();
+  closeModal();
+  renderApprovePage();
+}
+
+// ============================================================
+// ADMIN - KATEGORI
+// ============================================================
+function renderKategori() {
+  setActive("mn-kat");
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card" style="max-width:500px;">
+    <h3>🏷️ Manajemen Kategori</h3>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <input type="text" id="newKat" placeholder="Nama kategori baru" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"
+             onkeydown="if(event.key==='Enter') addKategori()">
+      <button class="btn btn-primary" onclick="addKategori()">Tambah</button>
+    </div>
+    <table id="tblKat">
+      <thead><tr><th>Kategori</th><th>Aksi</th></tr></thead>
+      <tbody>${renderKatRows()}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderKatRows() {
+  return state.categories.map((c,i)=>`
+    <tr><td>${c}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delKat(${i})">Hapus</button></td>
+    </tr>`).join("");
+}
+
+function addKategori() {
+  const v = document.getElementById("newKat").value.trim();
+  if (!v) return;
+  if (state.categories.includes(v)) { alert("Kategori sudah ada."); return; }
+  state.categories.push(v);
+  saveState();
+  renderKategori();
+}
+
+function delKat(i) {
+  if (!confirm("Hapus kategori ini?")) return;
+  state.categories.splice(i, 1);
+  saveState();
+  renderKategori();
+}
+
+// ============================================================
+// ADMIN - TOKO
+// ============================================================
+function renderToko() {
+  setActive("mn-toko");
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card" style="max-width:500px;">
+    <h3>🏪 Manajemen Toko</h3>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <input type="text" id="newToko" placeholder="Nama toko baru" style="flex:1;padding:8px 12px;border:1px solid #ddd;border-radius:6px;"
+             onkeydown="if(event.key==='Enter') addToko()">
+      <button class="btn btn-primary" onclick="addToko()">Tambah</button>
+    </div>
+    <table id="tblToko">
+      <thead><tr><th>Nama Toko</th><th>Aksi</th></tr></thead>
+      <tbody>${renderTokoRows()}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderTokoRows() {
+  return state.toko.map((t,i)=>`
+    <tr><td>${t}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delToko(${i})">Hapus</button></td>
+    </tr>`).join("");
+}
+
+function addToko() {
+  const v = document.getElementById("newToko").value.trim();
+  if (!v) return;
+  if (state.toko.includes(v)) { alert("Toko sudah ada."); return; }
+  state.toko.push(v);
+  saveState();
+  renderToko();
+}
+
+function delToko(i) {
+  if (!confirm("Hapus toko ini?")) return;
+  state.toko.splice(i, 1);
+  saveState();
+  renderToko();
+}
+
+// ============================================================
+// ADMIN - MODAL
+// ============================================================
+function renderModal() {
+  setActive("mn-modal");
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card" style="max-width:400px;">
+    <h3>💵 Pengaturan Modal Kas</h3>
+    <div class="summary-card" style="margin-bottom:20px;">
+      <div class="num">${fmtRp(state.modal)}</div>
+      <div class="label">Modal Saat Ini</div>
+    </div>
+    <div class="form-group">
+      <label>Jumlah (Rp)</label>
+      <input type="number" id="newModal" placeholder="Masukkan jumlah" style="padding:10px;border:1px solid #ddd;border-radius:6px;width:100%;">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button class="btn btn-primary" onclick="tambahModal()">Tambah Modal</button>
+      <button class="btn btn-warning" onclick="setModal()">Set Modal</button>
+    </div>
+  </div>`;
+}
+
+function tambahModal() {
+  const v = parseInt(document.getElementById("newModal").value)||0;
+  if (v<=0) { alert("Masukkan jumlah yang valid."); return; }
+  state.modal += v; saveState();
+  alert("Modal bertambah: " + fmtRp(v)); renderModal();
+}
+
+function setModal() {
+  const v = parseInt(document.getElementById("newModal").value)||0;
+  if (v<=0) { alert("Masukkan jumlah yang valid."); return; }
+  state.modal = v; saveState();
+  alert("Modal diset: " + fmtRp(v)); renderModal();
+}
+
+// ============================================================
+// ADMIN - KARYAWAN
+// ============================================================
+function renderKaryawan() {
+  setActive("mn-kar");
+  document.getElementById("mainContent").innerHTML = `
+  <div class="card">
+    <h3>👥 Manajemen Karyawan & Admin</h3>
+    <div style="margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="formTambahUser()">+ Tambah Pengguna</button>
+    </div>
+    <table id="tblUser">
+      <thead><tr><th>Nama</th><th>Username</th><th>Role</th><th>Toko</th><th>Aksi</th></tr></thead>
+      <tbody>${renderUserRows()}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderUserRows() {
+  return state.users.map(u=>`
+    <tr>
+      <td>${u.nama}</td><td>${u.username}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-approved':'badge-pending'}">${u.role}</span></td>
+      <td>${u.toko}</td>
+      <td>
+        <button class="btn btn-warning btn-sm" onclick="editUser(${u.id})">Edit</button>
+        ${u.id!==currentUser.id?`<button class="btn btn-danger btn-sm" onclick="delUser(${u.id})">Hapus</button>`:""}
+      </td>
+    </tr>`).join("");
+}
+
+function formTambahUser() {
+  openModal(`
+  <h3>➕ Tambah Pengguna</h3>
+  <div class="form-group"><label>Nama Lengkap</label><input type="text" id="uNama" placeholder="Nama"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Username</label><input type="text" id="uUser" placeholder="Username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="uPass" placeholder="Password"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Role</label>
+      <select id="uRole"><option value="staf">Staf</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="form-group"><label>Toko</label>
+      <select id="uToko">
+        ${state.toko.map(t=>`<option>${t}</option>`).join("")}
+        <option value="Semua">Semua</option>
+      </select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="saveTambahUser()">Simpan</button>
+    <button class="btn" onclick="closeModal()">Batal</button>
+  </div>`);
+}
+
+function saveTambahUser() {
+  const nama = document.getElementById("uNama").value.trim();
+  const user = document.getElementById("uUser").value.trim();
+  const pass = document.getElementById("uPass").value.trim();
+  const role = document.getElementById("uRole").value;
+  const toko = document.getElementById("uToko").value;
+  if (!nama||!user||!pass) { alert("Lengkapi semua field."); return; }
+  if (state.users.find(u=>u.username===user)) { alert("Username sudah ada."); return; }
+  const newId = Math.max(...state.users.map(u=>u.id))+1;
+  state.users.push({ id:newId, username:user, password:pass, role, nama, toko });
+  saveState(); closeModal();
+  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+}
+
+function editUser(id) {
+  const u = state.users.find(x=>x.id===id);
+  if (!u) return;
+  openModal(`
+  <h3>✏️ Edit Pengguna</h3>
+  <div class="form-group"><label>Nama Lengkap</label><input type="text" id="euNama" value="${u.nama}"></div>
+  <div class="form-row">
+    <div class="form-group"><label>Username</label><input type="text" id="euUser" value="${u.username}"></div>
+    <div class="form-group"><label>Password Baru</label><input type="password" id="euPass" placeholder="Kosongkan jika tidak diubah"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Role</label>
+      <select id="euRole">
+        <option ${u.role==='staf'?'selected':''} value="staf">Staf</option>
+        <option ${u.role==='admin'?'selected':''} value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Toko</label>
+      <select id="euToko">
+        ${state.toko.map(t=>`<option ${t===u.toko?'selected':''}>${t}</option>`).join("")}
+        <option ${u.toko==='Semua'?'selected':''} value="Semua">Semua</option>
+      </select>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-primary" onclick="saveEditUser(${id})">Simpan</button>
+    <button class="btn" onclick="closeModal()">Batal</button>
+  </div>`);
+}
+
+function saveEditUser(id) {
+  const u = state.users.find(x=>x.id===id);
+  if (!u) return;
+  u.nama     = document.getElementById("euNama").value.trim();
+  u.username = document.getElementById("euUser").value.trim();
+  const np   = document.getElementById("euPass").value.trim();
+  if (np) u.password = np;
+  u.role = document.getElementById("euRole").value;
+  u.toko = document.getElementById("euToko").value;
+  saveState(); closeModal();
+  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+}
+
+function delUser(id) {
+  if (!confirm("Hapus pengguna ini?")) return;
+  state.users = state.users.filter(u=>u.id!==id); saveState();
+  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+}
+
+// ============================================================
+// ADMIN - CETAK PDF SEMUA
+// ============================================================
+function cetakPDFAdmin() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("landscape");
+  doc.setFontSize(16); doc.text("Laporan Petty Cash - Admin", 14, 18);
+  doc.setFontSize(10); doc.text("Dicetak: " + new Date().toLocaleString("id-ID"), 14, 26);
+
+  const rows = [];
+  document.querySelectorAll("#tblApprove tbody tr").forEach(tr => {
+    const cells = tr.querySelectorAll("td");
+    if (cells.length > 3) {
+      rows.push([
+        cells[0].textContent.trim(),
+        cells[1].textContent.trim(),
+        cells[2].textContent.replace(/•/g,"-").trim(),
+        cells[3].textContent.trim(),
+        cells[5].textContent.replace(/oleh:.*/s,"").trim()
+      ]);
+    }
+  });
+
+  doc.autoTable({
+    startY: 32,
+    head: [["Tanggal","Pengaju/Toko","Item Barang","Total","Status"]],
+    body: rows, styles:{ fontSize:9 }, headStyles:{ fillColor:[50,50,50] },
+    columnStyles:{ 2:{ cellWidth:100 } }
+  });
+  doc.save("laporan-admin-petty-cash.pdf");
+}
+
+// ============================================================
+// GOOGLE SHEETS INTEGRATION
+// ============================================================
+
+// Kirim data ke Apps Script — foto base64 disertakan agar bisa diupload ke Drive
+function sendToSheets(row) {
+  if (!GAS_URL || GAS_URL.includes("YOUR_SCRIPT_ID")) return;
+
+  // Buat payload — pastikan semua field item lengkap termasuk foto
+  const payload = {
+    action: "insert",
+    data: _buildPayload(row)
+  };
+
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }).then(r => r.json())
+    .then(res => { if (!res.success) console.warn("Sheets insert:", res.message); })
+    .catch(err => console.warn("Sheets insert error:", err));
+}
+
+function updateSheets(row) {
+  if (!GAS_URL || GAS_URL.includes("YOUR_SCRIPT_ID")) return;
+
+  const payload = {
+    action: "update",
+    data: _buildPayload(row)
+  };
+
+  fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }).then(r => r.json())
+    .then(res => { if (!res.success) console.warn("Sheets update:", res.message); })
+    .catch(err => console.warn("Sheets update error:", err));
+}
+
+// Pastikan semua field penting ada dan nama field konsisten
+function _buildPayload(row) {
+  return {
+    id          : row.id,
+    tanggal     : row.tanggal,
+    pengaju     : row.pengaju,
+    toko        : row.toko,
+    totalJumlah : row.totalJumlah,
+    status      : row.status,
+    catatan     : row.catatan     || "",
+    approvedBy  : row.approvedBy  || "",
+    approvedAt  : row.approvedAt  || "",
+    // Pastikan setiap item punya field namaBarang, kategori, keterangan, jumlah, foto
+    items: (row.items || []).map(it => ({
+      namaBarang  : it.namaBarang  || "",
+      kategori    : it.kategori    || "",
+      keterangan  : it.keterangan  || "",
+      jumlah      : Number(it.jumlah) || 0,
+      foto        : it.foto        || ""   // base64 atau kosong
+    }))
+  };
+}
+
+// Enter on login
+document.getElementById("loginPass").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+</script>
+</body>
+</html>
