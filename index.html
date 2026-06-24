@@ -27,19 +27,21 @@ body { font-family: Arial, sans-serif; background:#f5f5f5; color:#333; }
 .btn-danger  { background:#e74c3c; color:#fff; }
 .btn-success { background:#27ae60; color:#fff; }
 .btn-warning { background:#f39c12; color:#fff; }
+.btn-info    { background:#3498db; color:#fff; }
 .btn-sm  { padding:5px 12px; font-size:12px; }
 .btn-full { width:100%; }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
 
 /* NAVBAR */
 #app { display:none; }
-.navbar { background:#fff; border-bottom:1px solid #ddd; padding:12px 24px; display:flex; justify-content:space-between; align-items:center; }
+.navbar { background:#fff; border-bottom:1px solid #ddd; padding:12px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
 .navbar h1 { font-size:18px; }
 .navbar .nav-right { display:flex; align-items:center; gap:12px; }
 .navbar .user-info { font-size:13px; color:#666; }
 
 /* SIDEBAR */
 .layout { display:flex; min-height:calc(100vh - 55px); }
-.sidebar { width:200px; background:#fff; border-right:1px solid #ddd; padding:16px 0; flex-shrink:0; }
+.sidebar { width:220px; background:#fff; border-right:1px solid #ddd; padding:16px 0; flex-shrink:0; }
 .sidebar a { display:block; padding:10px 20px; font-size:14px; color:#444; text-decoration:none; cursor:pointer; }
 .sidebar a:hover, .sidebar a.active { background:#f0f0f0; color:#111; font-weight:bold; }
 .content { flex:1; padding:24px; overflow-y:auto; }
@@ -88,6 +90,24 @@ img.bon-thumb { width:60px; height:45px; object-fit:cover; border-radius:4px; cu
 .item-table input, .item-table select { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
 .total-bar { background:#f8f8f8; border:1px solid #ddd; border-radius:6px; padding:10px 16px;
              display:flex; justify-content:flex-end; align-items:center; gap:12px; font-size:14px; font-weight:bold; }
+
+/* LOADING */
+.loading-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; justify-content:center; align-items:center; font-size:16px; color:#333; }
+.spinner { border:4px solid #f3f3f3; border-top:4px solid #333; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin-right:12px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .layout { flex-direction:column; }
+  .sidebar { width:100%; border-right:none; border-bottom:1px solid #ddd; display:flex; overflow-x:auto; padding:8px; }
+  .sidebar a { white-space:nowrap; padding:8px 14px; font-size:13px; }
+  .content { padding:16px; }
+  .summary-grid { grid-template-columns:1fr; }
+  .form-row, .form-row-3 { grid-template-columns:1fr; }
+  table { font-size:11px; }
+  th, td { padding:6px 8px; }
+  .modal { padding:16px; }
+}
 </style>
 </head>
 <body>
@@ -107,7 +127,10 @@ img.bon-thumb { width:60px; height:45px; object-fit:cover; border-radius:4px; cu
     </div>
     <div id="loginErr" style="color:#e74c3c;font-size:12px;margin-bottom:10px;"></div>
     <button class="btn btn-primary btn-full" onclick="doLogin()">Masuk</button>
-    <p style="margin-top:12px;font-size:11px;text-align:center;color:#aaa;">Demo: admin/admin123 | staf1/staf123</p>
+    <p style="margin-top:12px;font-size:11px;text-align:center;color:#aaa;">
+      Default: admin/admin123 | staf1/staf123 | staf2/staf456<br>
+      (Data dari Google Sheets setelah Setup)
+    </p>
   </div>
 </div>
 
@@ -131,14 +154,20 @@ img.bon-thumb { width:60px; height:45px; object-fit:cover; border-radius:4px; cu
   <div class="modal" id="modalBox"></div>
 </div>
 
+<!-- LOADING -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="spinner"></div>
+  <span id="loadingText">Memproses...</span>
+</div>
+
 <script>
 // ============================================================
-// CONFIG
+// CONFIG — PASTE URL DEPLOYMENT APPS SCRIPT ANDA DI SINI
 // ============================================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbycECTomHR271PLlLDf9tpHfWQk0Hf-He6qIJjh2Qp7wwADf0d9ySPyXTWlvJMc50G8Xg/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw1tit06LZmGZSVJ0gnwztlsaEABYFXGJrUV3EG3GbJ7PMQigRk88xDQTiumPBRGK2a/exec";
 
 // ============================================================
-// DEFAULT STATE
+// DEFAULT STATE (fallback kalau server belum di-setup)
 // ============================================================
 const DEFAULT_STATE = {
   users: [
@@ -149,33 +178,71 @@ const DEFAULT_STATE = {
   categories: ["Operasional","ATK","Kebersihan","Listrik","Transport","Lain-lain"],
   toko: ["Toko A","Toko B","Toko C"],
   modal: 5000000,
-  pengajuan: [
-    {
-      id:1, tanggal:"2026-06-10", pengaju:"Budi Santoso", toko:"Toko A",
-      items:[
-        { namaBarang:"Kertas A4",  kategori:"ATK",         keterangan:"Beli kertas",  jumlah:50000, foto:"" },
-        { namaBarang:"Pulpen Box", kategori:"ATK",         keterangan:"Isi pulpen",   jumlah:35000, foto:"" }
-      ],
-      totalJumlah: 85000, status:"approved", catatan:"", approvedBy:"Admin Pusat", approvedAt:"2026-06-10"
-    },
-    {
-      id:2, tanggal:"2026-06-12", pengaju:"Sari Dewi", toko:"Toko B",
-      items:[
-        { namaBarang:"Sabun Cuci", kategori:"Kebersihan",  keterangan:"Sabun cuci",   jumlah:30000, foto:"" }
-      ],
-      totalJumlah: 30000, status:"pending", catatan:"", approvedBy:"", approvedAt:""
-    }
-  ],
-  nextId: 3
+  pengajuan: [],
+  nextId: 1
 };
 
 // ============================================================
-// LOCALSTORAGE PERSISTENCE
+// LOADING HELPER
+// ============================================================
+function showLoading(text="Memproses...") {
+  document.getElementById("loadingText").textContent = text;
+  document.getElementById("loadingOverlay").classList.remove("hidden");
+}
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.add("hidden");
+}
+
+// ============================================================
+// SERVER CALL HELPER
+// ============================================================
+async function callServer(action, data) {
+  if (!GAS_URL || GAS_URL.includes("XXXXXX")) {
+    return {success:false, message:"GAS_URL belum diisi. Silakan deploy Apps Script dulu."};
+  }
+  try {
+    const res = await fetch(GAS_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({action, data})
+    });
+    return await res.json();
+  } catch(err) {
+    return {success:false, message: err.toString()};
+  }
+}
+
+async function setupServer() {
+  if (!confirm("Jalankan setup otomatis?\n\nIni akan membuat sheet (Pengajuan, Items, Users, Kategori, Toko, Modal) dan folder Drive untuk foto bon.")) return;
+  showLoading("Menyiapkan server...");
+  const res = await callServer("setup");
+  hideLoading();
+  if (res.success) {
+    alert("✅ " + res.message + "\n\nSpreadsheet: " + res.spreadsheetUrl + "\nFolder Foto: " + res.folderUrl);
+  } else {
+    alert("❌ Gagal: " + res.message);
+  }
+}
+
+async function syncFromServer() {
+  showLoading("Mengambil data dari server...");
+  const res = await callServer("getData");
+  hideLoading();
+  if (!res.success) { alert("Sync gagal: " + res.message); return; }
+  state = res.data;
+  saveState();
+  alert("✅ Data berhasil disinkronkan dari server.\n\nTotal pengajuan: " + state.pengajuan.length);
+  if (currentUser) {
+    if (currentUser.role === "staf") renderPengajuan();
+    else renderDashboardAdmin();
+  }
+}
+
+// ============================================================
+// LOCALSTORAGE PERSISTENCE (cache lokal)
 // ============================================================
 function saveState() {
-  // simpan tanpa foto (base64 terlalu besar) — foto tetap ada di memori sesi
-  const toSave = JSON.parse(JSON.stringify(state));
-  try { localStorage.setItem("pettyCashState", JSON.stringify(toSave)); } catch(e){}
+  try { localStorage.setItem("pettyCashState", JSON.stringify(state)); } catch(e){}
 }
 
 function loadState() {
@@ -188,9 +255,6 @@ function loadState() {
 
 let state = loadState();
 let currentUser = null;
-
-// simpan otomatis tiap perubahan state
-function saveAndRefresh() { saveState(); }
 
 // ============================================================
 // HELPERS
@@ -232,7 +296,7 @@ function doLogout() {
   document.getElementById("loginErr").textContent = "";
 }
 
-// Restore session saat halaman dibuka / refresh
+// Restore session
 (function restoreSession() {
   try {
     const raw = localStorage.getItem("pettyCashSession");
@@ -251,7 +315,8 @@ function buildSidebar() {
   if (currentUser.role === "staf") {
     sb.innerHTML = `
       <a onclick="renderPengajuan()" id="mn-pengajuan">📋 Pengajuan</a>
-      <a onclick="renderRiwayat()"   id="mn-riwayat">📜 Riwayat</a>`;
+      <a onclick="renderRiwayat()"   id="mn-riwayat">📜 Riwayat</a>
+      <a onclick="syncFromServer()"  id="mn-sync" style="color:#27ae60;">🔄 Sync</a>`;
   } else {
     sb.innerHTML = `
       <a onclick="renderDashboardAdmin()" id="mn-dashboard">🏠 Dashboard</a>
@@ -259,7 +324,10 @@ function buildSidebar() {
       <a onclick="renderKategori()"       id="mn-kat">🏷️ Kategori</a>
       <a onclick="renderToko()"           id="mn-toko">🏪 Toko</a>
       <a onclick="renderModal()"          id="mn-modal">💵 Modal</a>
-      <a onclick="renderKaryawan()"       id="mn-kar">👥 Karyawan</a>`;
+      <a onclick="renderKaryawan()"       id="mn-kar">👥 Karyawan</a>
+      <hr style="margin:10px 20px;border:none;border-top:1px solid #eee;">
+      <a onclick="syncFromServer()" style="color:#27ae60;">🔄 Sync dari Server</a>
+      <a onclick="setupServer()" style="color:#e67e22;">⚙️ Setup Server</a>`;
   }
 }
 
@@ -280,9 +348,9 @@ function closeModal() { document.getElementById("modalOverlay").classList.add("h
 document.addEventListener("click", e => { if (e.target.id==="modalOverlay") closeModal(); });
 
 // ============================================================
-// STAF - FORM PENGAJUAN (multi-item)
+// STAF - FORM PENGAJUAN
 // ============================================================
-let draftItems = []; // item sementara di form
+let draftItems = [];
 
 function renderPengajuan() {
   setActive("mn-pengajuan");
@@ -349,7 +417,7 @@ function renderItemRows() {
         ${item.foto
           ? `<img class="bon-thumb" src="${item.foto}" onclick="viewImg('${item.foto}')" title="Lihat foto"><br>
              <small style="cursor:pointer;color:#e74c3c;" onclick="draftItems[${i}].foto='';renderItemRows()">Hapus</small>`
-          : `<input type="file" accept="image/*" style="font-size:11px;padding:2px;" onchange="readFoto(${i},this)">`
+          : `<input type="file" accept="image/*" capture="environment" style="font-size:11px;padding:2px;" onchange="readFoto(${i},this)">`
         }
       </td>
       <td>${draftItems.length>1 ? `<button class="btn btn-danger btn-sm" onclick="removeItemRow(${i})">✕</button>` : ""}</td>
@@ -380,7 +448,7 @@ function updateGrandTotal() {
   if (el) el.textContent = fmtRp(total);
 }
 
-function submitPengajuan() {
+async function submitPengajuan() {
   const tgl  = document.getElementById("fTgl").value;
   const toko = document.getElementById("fToko").value;
   if (!tgl) { alert("Isi tanggal."); return; }
@@ -391,18 +459,26 @@ function submitPengajuan() {
   const totalJumlah = calcTotal(validItems);
   const newRow = {
     id: state.nextId++,
-    tanggal: tgl,
-    pengaju: currentUser.nama,
-    toko,
+    tanggal: tgl, pengaju: currentUser.nama, toko,
     items: validItems.map(i=>({...i, jumlah: parseInt(i.jumlah)||0})),
-    totalJumlah,
-    status: "pending",
-    catatan: ""
+    totalJumlah, status: "pending", catatan: ""
   };
   state.pengajuan.push(newRow);
   saveState();
-  sendToSheets(newRow);
-  alert("Pengajuan berhasil dikirim! Total: " + fmtRp(totalJumlah));
+
+  showLoading("Mengirim pengajuan ke server...");
+  const res = await callServer("insert", newRow);
+  hideLoading();
+
+  if (res.success && res.items) {
+    newRow.items = res.items;
+    saveState();
+  } else if (!res.success) {
+    console.warn("Server insert gagal:", res.message);
+    alert("⚠️ Data tersimpan lokal tapi gagal ke server:\n" + res.message);
+  }
+
+  alert("✅ Pengajuan berhasil dikirim! Total: " + fmtRp(totalJumlah));
   renderPengajuan();
 }
 
@@ -493,7 +569,7 @@ function viewImg(src) {
 }
 
 // ============================================================
-// CETAK PDF - PER PENGAJUAN (dipakai staf & admin)
+// CETAK PDF - PER PENGAJUAN
 // ============================================================
 function cetakSatuPengajuan(id) {
   const r = state.pengajuan.find(x=>x.id===id);
@@ -501,13 +577,11 @@ function cetakSatuPengajuan(id) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // Header
   doc.setFontSize(16); doc.setFont(undefined,"bold");
   doc.text("BUKTI PENGAJUAN PETTY CASH", 105, 18, { align:"center" });
   doc.setFontSize(10); doc.setFont(undefined,"normal");
   doc.text("Dicetak: " + new Date().toLocaleString("id-ID"), 105, 25, { align:"center" });
 
-  // Info pengajuan
   let y = 34;
   const addInfo = (label, val) => {
     doc.setFont(undefined,"bold");   doc.text(label, 14, y);
@@ -524,7 +598,6 @@ function cetakSatuPengajuan(id) {
 
   y += 3;
 
-  // Tabel item
   doc.autoTable({
     startY: y,
     head: [["No","Nama Barang","Kategori","Keterangan","Jumlah (Rp)"]],
@@ -539,7 +612,6 @@ function cetakSatuPengajuan(id) {
     columnStyles: { 4: { halign:"right" } }
   });
 
-  // Tanda tangan
   const finalY = doc.lastAutoTable.finalY + 16;
   doc.setFontSize(10);
   doc.text("Pengaju,", 30, finalY, { align:"center" });
@@ -552,7 +624,7 @@ function cetakSatuPengajuan(id) {
 }
 
 // ============================================================
-// CETAK PDF STAF - SEMUA (dari tabel riwayat)
+// CETAK PDF STAF - SEMUA
 // ============================================================
 function cetakPDFStaf() {
   const { jsPDF } = window.jspdf;
@@ -583,7 +655,7 @@ function cetakPDFStaf() {
 }
 
 // ============================================================
-// STAF - EDIT PENGAJUAN (hanya pending)
+// STAF - EDIT PENGAJUAN
 // ============================================================
 let editStafDraftItems = [];
 
@@ -629,7 +701,7 @@ function renderEsItemRows() {
         ${item.foto
           ? `<img class="bon-thumb" src="${item.foto}" onclick="viewImg('${item.foto}')"><br>
              <small style="cursor:pointer;color:#e74c3c;" onclick="editStafDraftItems[${i}].foto='';renderEsItemRows()">Hapus</small>`
-          : `<input type="file" accept="image/*" style="font-size:11px;" onchange="readEsFoto(${i},this)">`}
+          : `<input type="file" accept="image/*" capture="environment" style="font-size:11px;" onchange="readEsFoto(${i},this)">`}
       </td>
       <td>${editStafDraftItems.length>1?`<button class="btn btn-danger btn-sm" onclick="removeEsItemRow(${i})">✕</button>`:""}</td>
     </tr>`).join("");
@@ -652,14 +724,19 @@ function readEsFoto(i, input) {
   reader.onload = e => { editStafDraftItems[i].foto = e.target.result; renderEsItemRows(); };
   reader.readAsDataURL(input.files[0]);
 }
-function saveEditPengajuanStaf(id) {
+async function saveEditPengajuanStaf(id) {
   const r = state.pengajuan.find(x=>x.id===id);
   if (!r || r.status !== "pending") { alert("Tidak bisa disimpan."); closeModal(); return; }
   r.tanggal     = document.getElementById("esTgl").value;
   r.toko        = document.getElementById("esToko").value;
   r.items       = editStafDraftItems.map(i=>({...i, jumlah:parseInt(i.jumlah)||0}));
   r.totalJumlah = calcTotal(r.items);
-  saveState(); updateSheets(r); closeModal();
+  saveState();
+  showLoading("Menyimpan ke server...");
+  const res = await callServer("update", r);
+  hideLoading();
+  if (res.success && res.items) { r.items = res.items; saveState(); }
+  closeModal();
   renderRiwayat();
 }
 
@@ -673,7 +750,28 @@ function renderDashboardAdmin() {
   const pending     = state.pengajuan.filter(r=>r.status==="pending").length;
   const sisa        = state.modal - approved;
 
+  const gasStatus = (!GAS_URL || GAS_URL.includes("XXXXXX"))
+    ? `<span style="color:#e74c3c;">❌ Belum dikonfigurasi</span>`
+    : `<span style="color:#27ae60;">✅ Terhubung</span>`;
+
   document.getElementById("mainContent").innerHTML = `
+  <div class="card" style="background:#f8f9fa;">
+    <h3>☁️ Status Server</h3>
+    <p style="font-size:13px;color:#555;margin-bottom:8px;">
+      Status: ${gasStatus}
+    </p>
+    <p style="font-size:11px;color:#888;margin-bottom:12px;word-break:break-all;">
+      URL: <code style="background:#fff;padding:2px 6px;border-radius:4px;">${GAS_URL.slice(0,60)}${GAS_URL.length>60?'...':''}</code>
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-success btn-sm" onclick="syncFromServer()">🔄 Sync Data dari Server</button>
+      <button class="btn btn-warning btn-sm" onclick="setupServer()">⚙️ Setup Otomatis (Pertama Kali)</button>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:10px;">
+      💡 Klik "Setup Otomatis" sekali saja saat pertama kali. Setelah itu, data otomatis tersinkron ke Google Sheets & Drive.
+    </p>
+  </div>
+
   <div class="summary-grid">
     <div class="summary-card"><div class="num">${fmtRp(state.modal)}</div><div class="label">Total Modal</div></div>
     <div class="summary-card"><div class="num">${fmtRp(approved)}</div><div class="label">Total Disetujui</div></div>
@@ -710,7 +808,7 @@ function renderApprovePage() {
 function buildApprovePage(data) {
   const grandTotal = data.reduce((s,r)=>s+r.totalJumlah,0);
   const tableRows = data.length===0
-    ? `<tr><td colspan="8" style="text-align:center;color:#aaa;padding:20px;">Belum ada data</td></tr>`
+    ? `<tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">Belum ada data</td></tr>`
     : data.map(r => {
         const itemList = r.items.map(it=>`<div style="margin-bottom:2px;">• ${it.namaBarang} <span style="color:#888;">(${it.kategori})</span> — ${fmtRp(it.jumlah)}</div>`).join("");
         const bonList  = r.items.map(it=>it.foto?`<img class="bon-thumb" src="${it.foto}" onclick="viewImg('${it.foto}')">`:"-").join(" ");
@@ -730,7 +828,7 @@ function buildApprovePage(data) {
               ? `<button class="btn btn-success btn-sm" onclick="approveRow(${r.id})">✔ Setuju</button>
                  <button class="btn btn-danger btn-sm" onclick="rejectRow(${r.id})">✘ Tolak</button>`
               : ""}
-            <button class="btn btn-warning btn-sm" style="margin-top:4px;" onclick="editPengajuan(${r.id})">✏️ Edit</button>
+            <button class="btn btn-warning btn-sm" style="margin-top:4px;" onclick="editPengajuan(${r.id})">✏️</button>
             <button class="btn btn-sm" style="background:#eee;margin-top:4px;" onclick="cetakSatuPengajuan(${r.id})">🖨️</button>
           </td>
         </tr>`;
@@ -780,16 +878,20 @@ function filterApprove() {
   buildApprovePage(rows);
 }
 
-function approveRow(id) {
+async function approveRow(id) {
   const r = state.pengajuan.find(x=>x.id===id);
   if (!r) return;
   r.status     = "approved";
   r.approvedBy = currentUser.nama;
   r.approvedAt = today();
-  saveState(); updateSheets(r); renderApprovePage();
+  saveState();
+  showLoading("Menyimpan ke server...");
+  await callServer("update", r);
+  hideLoading();
+  renderApprovePage();
 }
 
-function rejectRow(id) {
+async function rejectRow(id) {
   const cat = prompt("Alasan penolakan:");
   if (cat===null) return;
   const r = state.pengajuan.find(x=>x.id===id);
@@ -798,11 +900,15 @@ function rejectRow(id) {
   r.catatan    = cat||"";
   r.approvedBy = currentUser.nama;
   r.approvedAt = today();
-  saveState(); updateSheets(r); renderApprovePage();
+  saveState();
+  showLoading("Menyimpan ke server...");
+  await callServer("update", r);
+  hideLoading();
+  renderApprovePage();
 }
 
 // ============================================================
-// ADMIN - EDIT PENGAJUAN (multi-item)
+// ADMIN - EDIT PENGAJUAN
 // ============================================================
 let editDraftItems = [];
 
@@ -873,7 +979,7 @@ function updateEditTotal() {
   if (el) el.textContent = fmtRp(total);
 }
 
-function saveEditPengajuan(id) {
+async function saveEditPengajuan(id) {
   const r = state.pengajuan.find(x=>x.id===id);
   if (!r) return;
   r.tanggal     = document.getElementById("eTgl").value;
@@ -882,15 +988,23 @@ function saveEditPengajuan(id) {
   r.catatan     = document.getElementById("eCat").value;
   r.items       = editDraftItems.map(i=>({...i, jumlah:parseInt(i.jumlah)||0}));
   r.totalJumlah = calcTotal(r.items);
-  saveState(); updateSheets(r); closeModal(); renderApprovePage();
+  saveState();
+  showLoading("Menyimpan ke server...");
+  await callServer("update", r);
+  hideLoading();
+  closeModal();
+  renderApprovePage();
 }
 
-function hapusPengajuan(id) {
+async function hapusPengajuan(id) {
   const r = state.pengajuan.find(x=>x.id===id);
   if (!r) return;
   if (!confirm(`Hapus pengajuan #${r.id} dari ${r.pengaju} (${fmtRp(r.totalJumlah)})?\n\nTindakan ini tidak bisa dibatalkan.`)) return;
   state.pengajuan = state.pengajuan.filter(x=>x.id!==id);
   saveState();
+  showLoading("Menghapus dari server...");
+  await callServer("delete", {id});
+  hideLoading();
   closeModal();
   renderApprovePage();
 }
@@ -922,19 +1036,25 @@ function renderKatRows() {
     </tr>`).join("");
 }
 
-function addKategori() {
+async function addKategori() {
   const v = document.getElementById("newKat").value.trim();
   if (!v) return;
   if (state.categories.includes(v)) { alert("Kategori sudah ada."); return; }
   state.categories.push(v);
   saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"kategori", list:state.categories});
+  hideLoading();
   renderKategori();
 }
 
-function delKat(i) {
+async function delKat(i) {
   if (!confirm("Hapus kategori ini?")) return;
   state.categories.splice(i, 1);
   saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"kategori", list:state.categories});
+  hideLoading();
   renderKategori();
 }
 
@@ -965,19 +1085,25 @@ function renderTokoRows() {
     </tr>`).join("");
 }
 
-function addToko() {
+async function addToko() {
   const v = document.getElementById("newToko").value.trim();
   if (!v) return;
   if (state.toko.includes(v)) { alert("Toko sudah ada."); return; }
   state.toko.push(v);
   saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"toko", list:state.toko});
+  hideLoading();
   renderToko();
 }
 
-function delToko(i) {
+async function delToko(i) {
   if (!confirm("Hapus toko ini?")) return;
   state.toko.splice(i, 1);
   saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"toko", list:state.toko});
+  hideLoading();
   renderToko();
 }
 
@@ -1004,17 +1130,23 @@ function renderModal() {
   </div>`;
 }
 
-function tambahModal() {
+async function tambahModal() {
   const v = parseInt(document.getElementById("newModal").value)||0;
   if (v<=0) { alert("Masukkan jumlah yang valid."); return; }
   state.modal += v; saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"modal", value:state.modal});
+  hideLoading();
   alert("Modal bertambah: " + fmtRp(v)); renderModal();
 }
 
-function setModal() {
+async function setModal() {
   const v = parseInt(document.getElementById("newModal").value)||0;
   if (v<=0) { alert("Masukkan jumlah yang valid."); return; }
   state.modal = v; saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"modal", value:state.modal});
+  hideLoading();
   alert("Modal diset: " + fmtRp(v)); renderModal();
 }
 
@@ -1074,7 +1206,7 @@ function formTambahUser() {
   </div>`);
 }
 
-function saveTambahUser() {
+async function saveTambahUser() {
   const nama = document.getElementById("uNama").value.trim();
   const user = document.getElementById("uUser").value.trim();
   const pass = document.getElementById("uPass").value.trim();
@@ -1082,10 +1214,14 @@ function saveTambahUser() {
   const toko = document.getElementById("uToko").value;
   if (!nama||!user||!pass) { alert("Lengkapi semua field."); return; }
   if (state.users.find(u=>u.username===user)) { alert("Username sudah ada."); return; }
-  const newId = Math.max(...state.users.map(u=>u.id))+1;
+  const newId = state.users.length ? Math.max(...state.users.map(u=>u.id))+1 : 1;
   state.users.push({ id:newId, username:user, password:pass, role, nama, toko });
-  saveState(); closeModal();
-  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+  saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"users", list:state.users});
+  hideLoading();
+  closeModal();
+  renderKaryawan();
 }
 
 function editUser(id) {
@@ -1118,7 +1254,7 @@ function editUser(id) {
   </div>`);
 }
 
-function saveEditUser(id) {
+async function saveEditUser(id) {
   const u = state.users.find(x=>x.id===id);
   if (!u) return;
   u.nama     = document.getElementById("euNama").value.trim();
@@ -1127,14 +1263,22 @@ function saveEditUser(id) {
   if (np) u.password = np;
   u.role = document.getElementById("euRole").value;
   u.toko = document.getElementById("euToko").value;
-  saveState(); closeModal();
-  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+  saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"users", list:state.users});
+  hideLoading();
+  closeModal();
+  renderKaryawan();
 }
 
-function delUser(id) {
+async function delUser(id) {
   if (!confirm("Hapus pengguna ini?")) return;
-  state.users = state.users.filter(u=>u.id!==id); saveState();
-  document.querySelector("#tblUser tbody").innerHTML = renderUserRows();
+  state.users = state.users.filter(u=>u.id!==id);
+  saveState();
+  showLoading("Menyimpan...");
+  await callServer("saveMaster", {type:"users", list:state.users});
+  hideLoading();
+  renderKaryawan();
 }
 
 // ============================================================
@@ -1167,67 +1311,6 @@ function cetakPDFAdmin() {
     columnStyles:{ 2:{ cellWidth:100 } }
   });
   doc.save("laporan-admin-petty-cash.pdf");
-}
-
-// ============================================================
-// GOOGLE SHEETS INTEGRATION
-// ============================================================
-
-// Kirim data ke Apps Script — foto base64 disertakan agar bisa diupload ke Drive
-function sendToSheets(row) {
-  if (!GAS_URL || GAS_URL.includes("YOUR_SCRIPT_ID")) return;
-
-  // Buat payload — pastikan semua field item lengkap termasuk foto
-  const payload = {
-    action: "insert",
-    data: _buildPayload(row)
-  };
-
-  fetch(GAS_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  }).then(r => r.json())
-    .then(res => { if (!res.success) console.warn("Sheets insert:", res.message); })
-    .catch(err => console.warn("Sheets insert error:", err));
-}
-
-function updateSheets(row) {
-  if (!GAS_URL || GAS_URL.includes("YOUR_SCRIPT_ID")) return;
-
-  const payload = {
-    action: "update",
-    data: _buildPayload(row)
-  };
-
-  fetch(GAS_URL, {
-    method: "POST",
-    body: JSON.stringify(payload)
-  }).then(r => r.json())
-    .then(res => { if (!res.success) console.warn("Sheets update:", res.message); })
-    .catch(err => console.warn("Sheets update error:", err));
-}
-
-// Pastikan semua field penting ada dan nama field konsisten
-function _buildPayload(row) {
-  return {
-    id          : row.id,
-    tanggal     : row.tanggal,
-    pengaju     : row.pengaju,
-    toko        : row.toko,
-    totalJumlah : row.totalJumlah,
-    status      : row.status,
-    catatan     : row.catatan     || "",
-    approvedBy  : row.approvedBy  || "",
-    approvedAt  : row.approvedAt  || "",
-    // Pastikan setiap item punya field namaBarang, kategori, keterangan, jumlah, foto
-    items: (row.items || []).map(it => ({
-      namaBarang  : it.namaBarang  || "",
-      kategori    : it.kategori    || "",
-      keterangan  : it.keterangan  || "",
-      jumlah      : Number(it.jumlah) || 0,
-      foto        : it.foto        || ""   // base64 atau kosong
-    }))
-  };
 }
 
 // Enter on login
